@@ -4,6 +4,9 @@ const Minio = require('minio');
 const fs = require('fs');
 const dotenv = require("dotenv");
 const parseMultiPart = require('aws-lambda-multipart-parser');
+const { loadImage } = require('canvas');
+const { createCanvas } = require('canvas');
+
 
 dotenv.config();
 
@@ -18,7 +21,7 @@ const TABLE_NAME = process.env.DYNAMODB_TABLE;
 
 // Initialiser le client MinIO
 const minioClient = new Minio.Client({
-  endPoint:process.env.MINIO_ENDPOINT,
+  endPoint: process.env.MINIO_ENDPOINT,
   port: 9000,
   useSSL: false,
   accessKey: process.env.MINIO_ACCESS_KEY,
@@ -37,20 +40,14 @@ exports.index = async (event) => {
 };
 
 exports.upload = async (event) => {
-  console.log('Event Headers:', event.headers);
-  console.log('Event Body (Raw):', event.body);
 
   // Check if the event is base64 encoded
   const bodyBuffer = event.isBase64Encoded ? Buffer.from(event.body, 'base64') : Buffer.from(event.body);
   const result = parseMultiPart.parse({ ...event, body: bodyBuffer.toString('binary') }, true);
-  console.log('Parsed Result:', result);
 
   // Process the parsed data
-  const memeText = result.memeText;
+  const memeText = result.memeText.toString('utf-8');
   const file = result.file;
-
-  const response = await minioClient.putObject(bucketName, file.filename, Buffer.from(file.content, 'base64'));
-  console.log(response)
 
   if (!memeText || !file) {
     return {
@@ -59,82 +56,61 @@ exports.upload = async (event) => {
     };
   }
 
-  // Further processing...
-  return { statusCode: 200 };
-};
+  // Load image and create meme
+  const image = await loadImage(`data:${file.contentType};base64,${file.content.toString('base64')}`);
+  const canvas = createCanvas(image.width, image.height);
+  const ctx = canvas.getContext('2d');
 
-exports.createUrl = async (event) => {
-  const { url } = JSON.parse(event.body);
-  const key = uuidv4().slice(0, 8);
 
-  const params = {
-    TableName: TABLE_NAME,
-    Item: {
-      key,
-      url,
-      createdAt: new Date().toISOString(),
-      clicks: 0,
-    },
-  };
 
-  await dynamoDb.put(params).promise();
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ key, shortUrl: `http://localhost:3000/url/${key}` }),
-  };
-};
+  ctx.drawImage(image, 0, 0);
 
-exports.listUrls = async (event) => {
-  const params = {
-    TableName: TABLE_NAME,
-  };
+  function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+    const words = text.split(' ');  // Sépare le texte en mots
+    let line = '';
 
-  const { Items } = await dynamoDb.scan(params).promise();
+    for (let n = 0; n < words.length; n++) {
+      const testLine = line + words[n] + ' ';
+      const testWidth = ctx.measureText(testLine).width;
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify(Items),
-  };
-};
+      // Si la largeur dépasse maxWidth, dessine la ligne actuelle et passe à la suivante
+      if (testWidth > maxWidth) {
+        ctx.fillText(line, x, y);
+        ctx.strokeText(line, x, y);
+        line = words[n] + ' ';
+        y += lineHeight;
+      } else {
+        line = testLine;
+      }
 
-exports.getUrl = async (event) => {
-  const { key } = event.pathParameters;
-
-  const params = {
-    TableName: TABLE_NAME,
-    Key: {
-      key,
-    },
-  };
-
-  const { Item } = await dynamoDb.get(params).promise();
-
-  // Increase the number of clicks
-  await dynamoDb
-    .update({
-      TableName: TABLE_NAME,
-      Key: {
-        key,
-      },
-      UpdateExpression: "SET clicks = clicks + :inc",
-      ExpressionAttributeValues: {
-        ":inc": 1,
-      },
-    })
-    .promise();
-
-  if (!Item) {
-    return {
-      statusCode: 404,
-      body: JSON.stringify({ message: "URL not found" }),
-    };
+      // Dessine la dernière ligne
+      ctx.fillText(line, x, y);
+      ctx.strokeText(line, x, y);
+    }
   }
 
+  // Paramètres
+  ctx.font = 'bold 16px "Arial"';
+  ctx.fillStyle = 'white';
+  ctx.strokeStyle = 'black';
+  ctx.lineWidth = 0.6;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+
+  // Appel de la fonction avec une largeur maximale et un espacement entre les lignes
+  wrapText(ctx, memeText, 0, 0, image.width, 20);  // maxWidth = 300, lineHeight = 20
+
+
+  // Convert canvas to buffer
+  const buffer = canvas.toBuffer('image/png');
+
+  // Upload to MinIO
+  const fileName = `meme-${file.filename}.png`;
+  await minioClient.putObject(bucketName, fileName, buffer);
+
   return {
-    statusCode: 301,
-    headers: {
-      Location: Item.url,
-    },
+    statusCode: 200,
+    body: JSON.stringify({ message: "Meme created successfully", fileName }),
   };
 };
