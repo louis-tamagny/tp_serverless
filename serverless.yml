@@ -1,0 +1,86 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: esgiiwm4
+# "app" enables Serverless Framework Dashboard features and sharing them with other Services.
+app: url-shortener
+# "service" is the name of this project. This will also be added to your AWS resource names.
+service: url-shortener
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  stage: dev
+  region: us-east-1
+  environment:
+    DYNAMODB_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
+
+functions:
+  hello:
+    handler: handler.index
+    events:
+      - http:
+          path: ""
+          method: get
+
+  createUrl:
+    handler: handler.createUrl
+    events:
+      - http:
+          path: url
+          method: post
+
+  listUrls:
+    handler: handler.listUrls
+    events:
+      - http:
+          path: url
+          method: get
+
+  getUrl:
+    handler: handler.getUrl
+    events:
+      - http:
+          path: url/{key}
+          method: get
+
+resources:
+  Resources:
+    UrlTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE}
+        AttributeDefinitions:
+          - AttributeName: key
+            AttributeType: S
+        KeySchema:
+          - AttributeName: key
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+plugins:
+  - serverless-offline
+  - serverless-dynamodb
+
+custom:
+  serverless-dynamodb:
+    # If you only want to use DynamoDB Local in some stages, declare them here
+    stages:
+      - dev
+    start:
+      docker: true
+      port: 8000
+      inMemory: true
+      migrate: true
+      seed: true
+      convertEmptyValues: true
