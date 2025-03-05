@@ -33,14 +33,26 @@ const minioClient = new Minio.Client({
 const bucketName = process.env.MINIO_BUCKET;
 
 exports.index = async (event) => {
-  return {
-    statusCode: 404,
-    body: JSON.stringify({
-      message: "Meme Generator v1.0",
-    }),
-  };
-};
+  try {
+    // Adjust the path if your file is in a different directory
+    const filePath = 'form.html';
+    const fileContent = fs.readFileSync(filePath, 'utf8');
 
+    return {
+      statusCode: 200,
+      body: fileContent,
+      headers: {
+        'Content-Type': 'text/html',
+      },
+    };
+  } catch (err) {
+    console.error('Error reading index.html:', err);
+    return {
+      statusCode: 500,
+      body: 'Internal Server Error',
+    };
+  }
+};
 exports.upload = async (event) => {
   // Check if the event is base64 encoded
   const bodyBuffer = event.isBase64Encoded ? Buffer.from(event.body, 'base64') : Buffer.from(event.body);
