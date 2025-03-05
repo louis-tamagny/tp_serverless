@@ -30,6 +30,7 @@ serverless offline start --reloadHandler
 The API will be available at `http://localhost:3000/dev` by default.
 
 ## API Endpoint
+`dev/` returns a form to use others endpoint
 
 `dev/upload` takes form data and upload the image to MinIO then create a record in DynamoDB
 
