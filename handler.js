@@ -14,6 +14,8 @@ const dynamoDb = new AWS.DynamoDB.DocumentClient(
   process.env.IS_OFFLINE && {
     region: "localhost",
     endpoint: "http://localhost:8000",
+    accessKeyId: 'xxxx',
+    secretAccessKey: 'xxxx',
   }
 );
 
@@ -34,35 +36,25 @@ exports.index = async (event) => {
   return {
     statusCode: 404,
     body: JSON.stringify({
-      message: "Url Shortener v1.0",
+      message: "Meme Generator v1.0",
     }),
   };
 };
 
 exports.upload = async (event) => {
-
   // Check if the event is base64 encoded
   const bodyBuffer = event.isBase64Encoded ? Buffer.from(event.body, 'base64') : Buffer.from(event.body);
   const result = parseMultiPart.parse({ ...event, body: bodyBuffer.toString('binary') }, true);
 
   // Process the parsed data
-  const memeText = result.memeText.toString('utf-8');
+  const memeText = result.memeText;
+  const name = result.name;
   const file = result.file;
-
-  if (!memeText || !file) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ message: "Could not parse form data correctly" }),
-    };
-  }
 
   // Load image and create meme
   const image = await loadImage(`data:${file.contentType};base64,${file.content.toString('base64')}`);
   const canvas = createCanvas(image.width, image.height);
   const ctx = canvas.getContext('2d');
-
-
-
 
   ctx.drawImage(image, 0, 0);
 
@@ -90,8 +82,9 @@ exports.upload = async (event) => {
     }
   }
 
+  const lineHeight = image.height / 10
   // Paramètres
-  ctx.font = 'bold 16px "Arial"';
+  ctx.font = `bold ${lineHeight}px "Arial"`;
   ctx.fillStyle = 'white';
   ctx.strokeStyle = 'black';
   ctx.lineWidth = 0.6;
@@ -99,7 +92,7 @@ exports.upload = async (event) => {
   ctx.textBaseline = 'top';
 
   // Appel de la fonction avec une largeur maximale et un espacement entre les lignes
-  wrapText(ctx, memeText, 0, 0, image.width, 20);  // maxWidth = 300, lineHeight = 20
+  wrapText(ctx, memeText, 0, 0, image.width, lineHeight);  // maxWidth = 300, lineHeight = 20
 
 
   // Convert canvas to buffer
@@ -107,10 +100,75 @@ exports.upload = async (event) => {
 
   // Upload to MinIO
   const fileName = `meme-${file.filename}.png`;
+
   await minioClient.putObject(bucketName, fileName, buffer);
+
+  const params = {
+    TableName: TABLE_NAME,
+    Item: {
+      key: name,
+      filename: fileName,
+      createdAt: new Date().toISOString(),
+    },
+  };
+
+  try {
+    await dynamoDb.put(params).promise();
+    console.log('Item successfully added to DynamoDB');
+  } catch (err) {
+    console.error('Error adding item to DynamoDB:', err);
+  }
+
+  if (!memeText || !file) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ message: "Could not parse form data correctly" }),
+    };
+  }
+
+  // Further processing...
+  return { statusCode: 301, headers: { Location: `download/${name}` } };
+};
+
+exports.download = async (event) => {
+  const { key } = event.pathParameters;
+  const params = {
+    TableName: TABLE_NAME,
+    Key: {
+      key: key,
+    },
+  };
+
+  const { Item } = await dynamoDb.get(params).promise();
+
+  const filePath = 'tmp/' + Item.filename;
+
+  // Provide a valid path for file download in MinIO
+  await minioClient.fGetObject(bucketName, Item.filename, filePath);
+
+  // Read the file contents and return as body
+  const fileContent = fs.readFileSync(filePath);
 
   return {
     statusCode: 200,
-    body: JSON.stringify({ message: "Meme created successfully", fileName }),
+    body: fileContent.toString('base64'), // Convert buffer to base64 string
+    isBase64Encoded: true,
+    headers: {
+      'Content-Type': 'image/png',  // Adjust the mime type as needed
+      'Content-Disposition': `inline; filename="${Item.filename}"`,
+    },
+  };
+}
+
+exports.listMeme = async (event) => {
+  const params = {
+    TableName: TABLE_NAME,
+  };
+
+  const { Items } = await dynamoDb.scan(params).promise();
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify(Items),
   };
 };

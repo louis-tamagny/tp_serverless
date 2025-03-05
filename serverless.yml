@@ -1,9 +1,9 @@
 # "org" ensures this Service is used with the correct Serverless Framework Access Key.
-org: klegann
+# org: esgiiw4
 # "app" enables Serverless Framework Dashboard features and sharing them with other Services.
-app: url-shortener
+app: meme-generator
 # "service" is the name of this project. This will also be added to your AWS resource names.
-service: url-shortener
+service: meme-generator
 
 provider:
   name: aws
@@ -27,7 +27,7 @@ provider:
   apiGateway:
     binaryMediaTypes:
       - 'multipart/form-data'
-      
+
 functions:
   hello:
     handler: handler.index
@@ -38,30 +38,24 @@ functions:
 
   upload:
     handler: handler.upload
+    timeout: 30
     events:
       - http:
           path: upload
           method: post
 
-  createUrl:
-    handler: handler.createUrl
+  download:
+    handler: handler.download
     events:
       - http:
-          path: url
-          method: post
-
-  listUrls:
-    handler: handler.listUrls
-    events:
-      - http:
-          path: url
+          path: download/{key}
           method: get
 
-  getUrl:
-    handler: handler.getUrl
+  listMeme:
+    handler: handler.listMeme
     events:
       - http:
-          path: url/{key}
+          path: listMeme
           method: get
 
 resources:
