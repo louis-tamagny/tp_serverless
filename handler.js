@@ -56,9 +56,6 @@ exports.upload = async (event) => {
   const canvas = createCanvas(image.width, image.height);
   const ctx = canvas.getContext('2d');
 
-
-
-
   ctx.drawImage(image, 0, 0);
 
   function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
@@ -85,8 +82,9 @@ exports.upload = async (event) => {
     }
   }
 
+  const lineHeight = image.height / 10
   // Paramètres
-  ctx.font = 'bold 16px "Arial"';
+  ctx.font = `bold ${lineHeight}px "Arial"`;
   ctx.fillStyle = 'white';
   ctx.strokeStyle = 'black';
   ctx.lineWidth = 0.6;
@@ -94,7 +92,7 @@ exports.upload = async (event) => {
   ctx.textBaseline = 'top';
 
   // Appel de la fonction avec une largeur maximale et un espacement entre les lignes
-  wrapText(ctx, memeText, 0, 0, image.width, 20);  // maxWidth = 300, lineHeight = 20
+  wrapText(ctx, memeText, 0, 0, image.width, lineHeight);  // maxWidth = 300, lineHeight = 20
 
 
   // Convert canvas to buffer
@@ -103,13 +101,13 @@ exports.upload = async (event) => {
   // Upload to MinIO
   const fileName = `meme-${file.filename}.png`;
 
-  const response = await minioClient.putObject(bucketName, filename, buffer);
+  await minioClient.putObject(bucketName, fileName, buffer);
 
   const params = {
     TableName: TABLE_NAME,
     Item: {
       key: name,
-      filename: filename,
+      filename: fileName,
       createdAt: new Date().toISOString(),
     },
   };
@@ -168,7 +166,7 @@ exports.listMeme = async (event) => {
   };
 
   const { Items } = await dynamoDb.scan(params).promise();
-  
+
   return {
     statusCode: 200,
     body: JSON.stringify(Items),
