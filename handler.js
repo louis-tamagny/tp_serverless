@@ -49,7 +49,8 @@ exports.upload = async (event) => {
   const memeText = result.memeText;
   const file = result.file;
 
-  await minioClient.putObject(bucketName, file.filename, Buffer.from(file.content, 'base64'));
+  const response = await minioClient.putObject(bucketName, file.filename, Buffer.from(file.content, 'base64'));
+  console.log(response)
 
   if (!memeText || !file) {
     return {
