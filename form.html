@@ -1,62 +1,98 @@
-<form action="http://localhost:3000/dev/upload" method="post" enctype="multipart/form-data">
-  <input type="file" name="file" placeholder="Enter an image">
-  <input type="text" name="memeText" placeholder="Enter a meme text">
-  <input type="text" name="name" placeholder="Enter a name">
+<div class="formulaire">
 
-  <button type="submit">Submit</button>
-</form>
 
+  <form action="http://localhost:3000/dev/upload" method="post" enctype="multipart/form-data">
+    <input type="file" name="file" placeholder="Enter an image">
+    <input type="text" name="memeText" placeholder="Enter a meme text">
+    <input type="text" name="name" placeholder="Enter a name">
+
+    <div class="button">
+      <button type="submit">Envoyer</button>
+      <a href="/dev/listMeme">Liste des Memes</a>
+    </div>
+  
+  </form>
+</div>
 <style>
 
-  body{
-    margin: 0;
-    padding: 0;
-    font-family: Arial, Helvetica, sans-serif;
-    background-color: #f0f0f0;
-  }
-  .formulaire {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-  }
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f7f7f7;
+}
 
-  h2 {
-    margin-bottom: 20px;
-    font-family: Arial, Helvetica, sans-serif;
-    font-weight: 500;
-  }
+.formulaire {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
 
-  form {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    padding: 20px;
-    background-color: #f0f0f0;
-  }
+h2 {
+  margin-bottom: 20px;
+  font-size: 2rem;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+}
 
-  input {
-    margin: 10px;
-    padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-  }
+form {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 30px;
+  background-color: #ffffff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
 
-  button {
-    margin: 10px;
-    padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    background-color: #f0f0f0;
-    cursor: pointer;
-  }
+input {
+  margin: 12px 0;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  width: 250px;
+  font-size: 1rem;
+  color: #333;
+  background-color: #fafafa;
+  transition: all 0.3s ease;
+}
 
-  button:hover {
-    background-color: #e0e0e0;
-  }
+input:focus {
+  border-color: #a5c3f8;
+  background-color: #fff;
+  outline: none;
+}
+
+button, a {
+  margin: 10px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background-color: #4CAF50;
+  color: #fff;
+  font-size: 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+a {
+  text-decoration: none;
+  color: #fff;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+a:hover {
+  text-decoration: underline;
+  color: #fff;
+}
 
   </style>

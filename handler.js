@@ -6,6 +6,7 @@ const dotenv = require("dotenv");
 const parseMultiPart = require('aws-lambda-multipart-parser');
 const { loadImage } = require('canvas');
 const { createCanvas } = require('canvas');
+const { randomUUID } = require("crypto");
 
 
 dotenv.config();
@@ -111,7 +112,7 @@ exports.upload = async (event) => {
   const buffer = canvas.toBuffer('image/png');
 
   // Upload to MinIO
-  const fileName = `meme-${file.filename}.png`;
+  const fileName = `meme-${file.filename}`;
 
   await minioClient.putObject(bucketName, fileName, buffer);
 
@@ -179,8 +180,107 @@ exports.listMeme = async (event) => {
 
   const { Items } = await dynamoDb.scan(params).promise();
 
+  let html = `
+  <!DOCTYPE html>
+  <html lang="fr">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liste des Memes</title>
+    <style>
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f7f7f7;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+
+      h1 {
+        font-size: 2.5rem;
+        margin-top: 20px;
+        color: #333;
+        text-align: center;
+        font-weight: 600;
+      }
+
+      ul {
+        display: flex;
+        flex-wrap: wrap;
+        list-style-type: none;
+        padding: 0;
+        margin: 30px 0;
+        width: 80%;
+        justify-content: center;
+        gap: 15px;
+      }
+
+      li {
+        flex: 1 1 calc(20% - 10px);
+        margin: 5px;
+        text-align: center;
+        padding: 15px;
+        border-radius: 8px;
+        background-color: #ffffff;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      li:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+      }
+
+      a {
+        text-decoration: none;
+        color: #4CAF50; /* Couleur verte */
+        font-size: 1rem;
+        font-weight: 500;
+      }
+
+      a:hover {
+        text-decoration: underline;
+        color: #45a049; /* Une nuance plus foncée de vert */
+      }
+
+      .back-link {
+        margin-top: 20px;
+        font-size: 1.1rem;
+        color: #1976d2; /* Couleur bleue pour le retour */
+        text-decoration: none;
+      }
+
+      .back-link:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Liste des Memes</h1>
+    <ul>
+`;
+
+Items.forEach(item => {
+  html += `<li><a href="/dev/download/${item.key}">${item.key}</a></li>`;
+});
+
+html += `
+    </ul>
+    <a class="back-link" href="/dev">Retour au formulaire</a>
+  </body>
+  </html>
+`;
+
+
   return {
     statusCode: 200,
-    body: JSON.stringify(Items),
+    body: html,
+    headers: {
+      'Content-Type': 'text/html',
+    },
   };
 };
