@@ -41,11 +41,8 @@ exports.upload = async (event) => {
   console.log('Event Body (Raw):', event.body);
 
   // Check if the event is base64 encoded
-  if (event.isBase64Encoded) {
-    console.log('Event Body is Base64 Encoded');
-  }
-
-  const result = parseMultiPart.parse(event, true);
+  const bodyBuffer = event.isBase64Encoded ? Buffer.from(event.body, 'base64') : Buffer.from(event.body);
+  const result = parseMultiPart.parse({ ...event, body: bodyBuffer.toString('binary') }, true);
   console.log('Parsed Result:', result);
 
   // Process the parsed data
