@@ -1,5 +1,10 @@
 const AWS = require("aws-sdk");
 const { v4: uuidv4 } = require("uuid");
+const Minio = require('minio');
+const fs = require('fs');
+const dotenv = require("dotenv");
+
+dotenv.config();
 
 const dynamoDb = new AWS.DynamoDB.DocumentClient(
   process.env.IS_OFFLINE && {
@@ -10,6 +15,17 @@ const dynamoDb = new AWS.DynamoDB.DocumentClient(
 
 const TABLE_NAME = process.env.DYNAMODB_TABLE;
 
+// Initialiser le client MinIO
+const minioClient = new Minio.Client({
+  endPoint:process.env.MINIO_ENDPOINT,
+  port: 9000,
+  useSSL: false,
+  accessKey: process.env.MINIO_ACCESS_KEY,
+  secretKey: process.env.MINIO_SECRET_KEY
+})
+
+const bucketName = process.env.MINIO_BUCKET;
+
 exports.index = async (event) => {
   return {
     statusCode: 404,
@@ -17,6 +33,14 @@ exports.index = async (event) => {
       message: "Url Shortener v1.0",
     }),
   };
+};
+
+exports.upload = async (event) => {
+  minioClient.fPutObject(bucketName, req.file.originalname, req.file.path)
+    .then(_ => res.status(200).send('all good, object uploaded'))
+    .catch(e => res.status(400).send(e.message))
+
+  // Envoyer vers MinIO
 };
 
 exports.createUrl = async (event) => {
